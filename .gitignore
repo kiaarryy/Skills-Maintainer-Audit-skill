@@ -1,5 +1,6 @@
 __pycache__/
 .pytest_cache/
+.pytest_tmp/
 .mypy_cache/
 .ruff_cache/
 .venv/
@@ -8,4 +9,3 @@ dist/
 *.egg-info/
 outputs/
 *.pyc
-

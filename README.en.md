@@ -33,6 +33,7 @@ Use $skill-maintainer-audit to audit my local skills, show 7-day and 30-day usag
 
 - Safe updates: only clean Git skill folders are eligible for fast-forward updates.
 - Usage analytics: extracts 7-day and 30-day trigger evidence from local Codex sessions, session index files, and automation memories.
+- Source discovery: detects GitHub sources from `.git`, `manifest.json`, `package.json`, README, AGENTS, and SKILL files.
 - Skill inventory: records metadata, file structure, categories, and structural issues.
 - Duplicate detection: groups skills with similar names, descriptions, and capability keywords.
 - Visual reporting: writes `report.html` with KPI cards, charts, usage tables, unused skills, duplicate groups, and manual-review lists.
@@ -77,9 +78,11 @@ python scripts/run_audit.py --codex-home C:\Users\pc\.codex --output outputs\lat
 
 - `outputs/latest/report.html`: visual dashboard.
 - `outputs/latest/skills_inventory.json`: inventory, categories, structural issues, and source metadata.
+- `outputs/latest/source_candidates.json`: discovered GitHub sources, source types, and confidence.
 - `outputs/latest/usage_7d_30d.json`: usage evidence for 7-day and 30-day windows.
 - `outputs/latest/update_actions.json`: update statuses and manual-review reasons.
 - `outputs/latest/duplicates.json`: similar or overlapping skill groups.
+- `outputs/latest/manual_update_commands.md`: advisory update notes for non-Git installed skills.
 
 ## Automation
 
@@ -104,4 +107,3 @@ python scripts/run_audit.py --codex-home C:\Users\pc\.codex --output outputs\smo
 ## License
 
 MIT
-

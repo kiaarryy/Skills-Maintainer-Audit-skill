@@ -45,12 +45,13 @@ The CLI writes a complete, timestamped maintenance snapshot to the selected outp
 
 - `report.html`: visual dashboard for people.
 - `skills_inventory.json`: installed skills, metadata, categories, sources, and structural issues.
+- `source_candidates.json`: discovered GitHub or manifest-based source candidates with confidence.
 - `usage_7d_30d.json`: parsed trigger evidence for 7-day and 30-day windows.
 - `update_actions.json`: safe update results and manual-review reasons.
 - `duplicates.json`: overlapping capability groups.
+- `manual_update_commands.md`: advisory update notes for copied or vendored non-Git skills.
 
 ## References
 
 - `references/source-manifest.example.json`: how to register source URLs for non-Git skills.
 - `references/automation-prompt.md`: suggested recurring automation prompt.
-

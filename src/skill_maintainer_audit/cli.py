@@ -9,7 +9,7 @@ from pathlib import Path
 from .duplicates import find_duplicates
 from .git_update import update_skills
 from .inventory import inventory_skills
-from .report import render_report, write_json
+from .report import render_manual_update_commands, render_report, write_json
 from .usage import analyze_usage
 
 
@@ -55,11 +55,25 @@ def main(argv: list[str] | None = None) -> int:
     usage = analyze_usage(codex_home, records, now=generated_at)
     updates = update_skills(records, args.update_policy)
     duplicates = find_duplicates(records)
+    annotate_similarities(records, duplicates)
+    source_candidates = [
+        {
+            "skill": record.name,
+            "url": record.source_url,
+            "source_type": record.source_type,
+            "confidence": record.source_confidence,
+            "commit": record.source_commit,
+        }
+        for record in records
+        if record.source_url
+    ]
 
     write_json(output / "skills_inventory.json", [record.to_dict() for record in records])
+    write_json(output / "source_candidates.json", source_candidates)
     write_json(output / "usage_7d_30d.json", [item.to_dict() for item in usage])
     write_json(output / "update_actions.json", [item.to_dict() for item in updates])
     write_json(output / "duplicates.json", [item.to_dict() for item in duplicates])
+    render_manual_update_commands(output / "manual_update_commands.md", updates)
     write_json(
         output / "run_summary.json",
         {
@@ -73,9 +87,11 @@ def main(argv: list[str] | None = None) -> int:
             "output_files": [
                 "report.html",
                 "skills_inventory.json",
+                "source_candidates.json",
                 "usage_7d_30d.json",
                 "update_actions.json",
                 "duplicates.json",
+                "manual_update_commands.md",
             ],
         },
     )
@@ -84,3 +100,11 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps({"status": "ok", "skills": len(records), "output": str(output)}, ensure_ascii=False))
     return 0
 
+
+def annotate_similarities(records, duplicates) -> None:
+    by_name = {record.name: record for record in records}
+    for group in duplicates:
+        for name in group.skills:
+            record = by_name.get(name)
+            if record:
+                record.similar_to = [other for other in group.skills if other != name]

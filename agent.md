@@ -239,6 +239,29 @@ Acceptance criteria:
 
 ---
 
+### Playbook F: Skill Maintenance Audit
+
+Use this when the task involves auditing, updating, classifying, deduplicating, reporting on, or automating local AI skills.
+
+Steps:
+
+1. Confirm the target skill roots and whether the run is read-only, safe-update, or publish-to-GitHub.
+2. Inspect existing outputs in `outputs/latest/` before re-running the CLI, especially `skills_inventory.json`, `usage_7d_30d.json`, `update_actions.json`, `duplicates.json`, and `report.html`.
+3. For update status, do not rely only on a local `.git` folder. Also inspect manifest metadata, package repository fields, README/AGENTS/SKILL GitHub URLs, and any maintained source manifest; mark confidence explicitly when source provenance is inferred.
+4. For usage statistics, separate explicit skill invocations from incidental appearances in prompts, tool outputs, copied instructions, or generated reports. Report 7-day and 30-day counts separately, and label the result unreliable if parsing evidence is ambiguous.
+5. For duplicate and category analysis, summarize concrete capability overlap and recommended action; avoid generic duplicate warnings without naming the affected skills and evidence.
+6. For HTML reports, treat readability as part of validation: evidence snippets should be bounded, font sizes should be readable, summaries should be scannable, and key findings should include visual totals or charts instead of only dense tables.
+7. After changes, run the project tests and a real CLI/report generation path when feasible, then inspect the generated JSON and HTML outputs for the specific user-facing claims.
+
+Acceptance criteria:
+
+* Update actions explain why a skill is `up_to_date`, `updated`, `outdated_source_detected`, `unknown_source`, `non_git_no_baseline`, or `dirty_git`.
+* Usage results distinguish real use from noisy mentions and include both 7-day and 30-day windows.
+* The generated report is visually usable, not just syntactically valid.
+* Validation includes both automated checks and a focused review of generated artifacts.
+
+---
+
 ## 5. Scripts
 
 Scripts are deterministic tools used for execution and validation.

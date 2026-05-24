@@ -37,3 +37,31 @@ def test_usage_counts_skill_mentions(tmp_path: Path) -> None:
     assert usage[0].count_7d == 1
     assert usage[0].count_30d == 1
 
+
+def test_usage_ignores_tool_output_skill_lists(tmp_path: Path) -> None:
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    lines = [
+        {
+            "type": "response_item",
+            "payload": {
+                "type": "function_call_output",
+                "role": "tool",
+                "output": "Available skills include $demo-skill and C:/Users/pc/.codex/skills/demo-skill/SKILL.md",
+            },
+        },
+        {
+            "type": "response_item",
+            "payload": {
+                "type": "message",
+                "role": "developer",
+                "content": [{"type": "input_text", "text": "Use $demo-skill in system instructions."}],
+            },
+        },
+    ]
+    (sessions / "session.jsonl").write_text("\n".join(json.dumps(line) for line in lines), encoding="utf-8")
+
+    usage = analyze_usage(tmp_path, [record("demo-skill")], now=datetime.now(timezone.utc))
+    assert usage[0].count_7d == 0
+    assert usage[0].count_30d == 0
+    assert usage[0].evidence == []

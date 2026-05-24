@@ -33,6 +33,7 @@ Use $skill-maintainer-audit to audit my local skills, show 7-day and 30-day usag
 
 - 安全更新：只对干净 Git skill 执行 fast-forward；未知来源、脏目录、冲突目录只报告。
 - 使用统计：从本地 Codex sessions、session index、automation memory 中提取 7 天和 30 天触发证据。
+- 来源识别：从 `.git`、`manifest.json`、`package.json`、README / AGENTS / SKILL 中识别 GitHub 来源和置信度。
 - 分类整理：按研究、文档、前端设计、浏览器 QA、开发、自动化运维、agent 运维等类别整理全部 skill。
 - 重复识别：按类别、名称和描述关键词找出功能类似或重复的 skill 组。
 - 可视化报告：生成 `report.html`，包含 KPI、柱状图、使用榜单、未使用 skill、重复组和风险列表。
@@ -102,9 +103,11 @@ python scripts/run_audit.py --codex-home C:\Users\pc\.codex --output outputs\lat
 
 - `outputs/latest/report.html`：可视化仪表盘。
 - `outputs/latest/skills_inventory.json`：skill 清单、分类、结构问题、来源信息。
+- `outputs/latest/source_candidates.json`：自动发现的 GitHub 来源、来源类型和置信度。
 - `outputs/latest/usage_7d_30d.json`：7 天和 30 天使用统计。
 - `outputs/latest/update_actions.json`：更新状态和手动检查原因。
 - `outputs/latest/duplicates.json`：功能重复或近似重复分组。
+- `outputs/latest/manual_update_commands.md`：非 Git 安装 skill 的人工更新建议。
 
 ## 自动化
 
@@ -129,4 +132,3 @@ python scripts/run_audit.py --codex-home C:\Users\pc\.codex --output outputs\smo
 ## License
 
 MIT
-
