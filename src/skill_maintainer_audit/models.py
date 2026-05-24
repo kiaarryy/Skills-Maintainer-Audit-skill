@@ -37,6 +37,11 @@ class SkillRecord:
     similar_to: list[str] = field(default_factory=list)
     issues: list[str] = field(default_factory=list)
     files: dict[str, bool] = field(default_factory=dict)
+    # skills.sh registry fields
+    registry_source: str | None = None   # e.g. "anthropics/skills"
+    registry_skill_id: str | None = None  # canonical skill name in registry
+    registry_installs: int = 0
+    registry_add_command: str | None = None  # ready-to-run npx skills add ...
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -54,6 +59,7 @@ class UpdateAction:
     source_type: str | None = None
     source_confidence: str | None = None
     manual_command: str | None = None
+    registry_command: str | None = None  # npx skills add ... (preferred over manual_command)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
