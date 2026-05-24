@@ -182,9 +182,30 @@ def inventory_skills(
     include_system: bool = False,
     source_manifest_path: Path | None = None,
     enable_github_search: bool = False,
+    enable_registry_search: bool = False,
 ) -> list[SkillRecord]:
     manifest = load_source_manifest(source_manifest_path)
-    return [
+    records = [
         audit_skill(path, manifest, enable_github_search=enable_github_search)
         for path in iter_skill_dirs(skills_root, include_system=include_system)
     ]
+
+    if enable_registry_search:
+        _annotate_registry(records)
+
+    return records
+
+
+def _annotate_registry(records: list[SkillRecord]) -> None:
+    """Query skills.sh registry for all records and annotate with registry fields."""
+    from .skillssh import batch_search_registry
+
+    names = [r.name for r in records]
+    matches = batch_search_registry(names, enable=True)
+    for record in records:
+        match = matches.get(record.name)
+        if match:
+            record.registry_source = match.source
+            record.registry_skill_id = match.skill_id
+            record.registry_installs = match.installs
+            record.registry_add_command = match.add_command

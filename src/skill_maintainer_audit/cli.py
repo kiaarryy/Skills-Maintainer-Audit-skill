@@ -33,10 +33,16 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--include-system", action="store_true", help="Include .system skills")
     audit.add_argument("--source-manifest", type=Path, default=None, help="Optional source manifest JSON")
     audit.add_argument(
+        "--registry-search",
+        action="store_true",
+        default=False,
+        help="Search skills.sh registry for each skill — authoritative source for npx skills add commands",
+    )
+    audit.add_argument(
         "--github-search",
         action="store_true",
         default=False,
-        help="Search GitHub API for source URLs of unknown-source skills (requires network; respects GITHUB_TOKEN)",
+        help="Search GitHub API for source URLs of skills not found on skills.sh registry",
     )
     audit.add_argument(
         "--write-install-info",
@@ -69,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         include_system=args.include_system,
         source_manifest_path=args.source_manifest,
         enable_github_search=args.github_search,
+        enable_registry_search=args.registry_search,
     )
     usage = analyze_usage(codex_home, records, now=generated_at)
     updates = update_skills(records, args.update_policy)
@@ -113,6 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     if (output / "source_manifest_draft.json").exists():
         output_files.append("source_manifest_draft.json")
 
+    registry_count = sum(1 for r in records if r.registry_source)
+    registry_updateable = [a for a in updates if a.status == "registry_updateable"]
+
     write_json(
         output / "run_summary.json",
         {
@@ -120,9 +130,11 @@ def main(argv: list[str] | None = None) -> int:
             "codex_home": str(codex_home),
             "skills_root": str(skills_root),
             "update_policy": args.update_policy,
+            "registry_search_enabled": args.registry_search,
             "github_search_enabled": args.github_search,
             "write_install_info": args.write_install_info,
             "skill_count": len(records),
+            "registry_count": registry_count,
             "source_discovered_count": sum(1 for r in records if r.source_url),
             "issue_count": sum(len(record.issues) for record in records),
             "duplicate_group_count": len(duplicates),
@@ -132,8 +144,40 @@ def main(argv: list[str] | None = None) -> int:
     )
     render_report(output / "report.html", records, usage, updates, duplicates, generated_at)
 
-    print(json.dumps({"status": "ok", "skills": len(records), "output": str(output)}, ensure_ascii=False))
+    # Print a clean, readable summary (not just JSON)
+    _print_action_summary(records, usage, updates, duplicates, output)
     return 0
+
+
+def _print_action_summary(records, usage, updates, duplicates, output) -> None:
+    from collections import Counter as _Counter
+    registry_updateable = [a for a in updates if a.status == "registry_updateable"]
+    non_git_updateable = [a for a in updates if a.status == "non_git_updateable"]
+    unknown = [a for a in updates if a.status == "unknown_source"]
+    unused_30d = [u for u in usage if u.count_30d == 0]
+
+    lines = [
+        "",
+        f"  Skill Audit Complete — {len(records)} skills",
+        "  " + "─" * 48,
+    ]
+    if registry_updateable:
+        lines.append(f"  [{len(registry_updateable):3}] on skills.sh registry  → npx skills add  (see manual_update_commands.md)")
+    if non_git_updateable:
+        lines.append(f"  [{len(non_git_updateable):3}] non-git source known   → git clone review (see manual_update_commands.md)")
+    if unknown:
+        lines.append(f"  [{len(unknown):3}] source unknown          → run with --registry-search to discover")
+    if unused_30d:
+        lines.append(f"  [{len(unused_30d):3}] unused in 30 days       → review candidates")
+    if duplicates:
+        lines.append(f"  [{len(duplicates):3}] duplicate groups         → overlapping capabilities")
+    lines += [
+        "  " + "─" * 48,
+        f"  Report: {output / 'report.html'}",
+        f"  Actions: {output / 'manual_update_commands.md'}",
+        "",
+    ]
+    print("\n".join(lines))
 
 
 def annotate_similarities(records, duplicates) -> None:
@@ -150,6 +194,10 @@ def _write_install_info_files(records) -> None:
 
     for record in records:
         if not record.source_url:
+            continue
+        # Never write install info into git-backed skills — they already have
+        # a .git directory that tracks provenance. Writing here would dirty the tree.
+        if record.is_git:
             continue
         skill_dir = Path(record.path)
         try:

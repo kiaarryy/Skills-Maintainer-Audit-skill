@@ -24,7 +24,7 @@ Use this skill when the user asks to maintain, update, audit, classify, deduplic
 
 3. Preserve safety boundaries.
    - Safe update only fast-forwards clean Git skill folders.
-   - Non-Git skills are never overwritten automatically. `manual_update_commands.md` contains copy-paste reinstall commands for each actionable non-Git skill.
+   - Non-Git skills are never overwritten automatically. `manual_update_commands.md` contains registry install commands when available and Git clone review commands for source-known non-Git skills.
    - Never delete skills, archives, logs, outputs, or generated reports.
 
 4. Understand update statuses.
@@ -32,22 +32,22 @@ Use this skill when the user asks to maintain, update, audit, classify, deduplic
    |---|---|---|
    | `updated` | Git skill fast-forwarded | ✅ Done |
    | `up_to_date` | Git skill already at latest | ✅ Done |
-   | `non_git_updateable` | Source URL confirmed + upstream HEAD fetched | Run command from `manual_update_commands.md` |
-   | `outdated_source_detected` | Vendored commit differs from upstream | Run command from `manual_update_commands.md` |
+   | `non_git_updateable` | Source URL confirmed + upstream HEAD fetched | Clone upstream to `_review_*`, compare, then apply manually |
+   | `outdated_source_detected` | Vendored commit differs from upstream | Clone upstream to `_review_*`, compare, then apply manually |
    | `non_git_no_baseline` | Source URL found but upstream unreachable | Check network / URL validity |
    | `unknown_source` | No source URL discovered | Run with `--github-search` or add to source manifest |
    | `dirty_git` | Git skill has local changes | Review and commit or stash changes first |
 
 5. Inspect results.
    - Open `outputs/latest/report.html` for the visual dashboard.
-   - Check the **Actionable Reinstall Commands** table for non-Git skills ready to update.
+   - Check the registry and Git clone review sections for non-Git skills that need human-controlled updates.
    - Use JSON files for automation: `skills_inventory.json`, `usage_7d_30d.json`, `update_actions.json`, and `duplicates.json`.
    - `source_manifest_draft.json` is auto-generated with all discovered sources; rename to `source_manifest.json` and pass with `--source-manifest` to make sources permanent.
 
 6. Act on findings.
    - For low-risk skill metadata issues, patch the relevant `SKILL.md` or `agents/openai.yaml`, then validate with the local skill validator.
    - For `unknown_source` skills: run `--github-search --write-install-info` once to discover and persist sources. Review `source_manifest_draft.json` before committing.
-   - For `non_git_updateable` skills: copy the command from `manual_update_commands.md` and run it; then re-run with `--write-install-info` to record the new baseline.
+   - For `non_git_updateable` skills: run the Git clone review command from `manual_update_commands.md`, compare the `_review_*` copy with the installed skill, then apply selected changes manually.
    - For duplicate skills, keep the one that is used more often, better maintained, or project-specific; archive only after explicit user approval.
 
 7. Validate before completion.
@@ -59,13 +59,13 @@ Use this skill when the user asks to maintain, update, audit, classify, deduplic
 
 The CLI writes a complete, timestamped maintenance snapshot to the selected output directory:
 
-- `report.html`: visual dashboard — includes Actionable Reinstall Commands table.
+- `report.html`: visual dashboard — includes registry actions and Git clone review fallback sections.
 - `skills_inventory.json`: installed skills, metadata, categories, sources, and structural issues.
 - `source_candidates.json`: discovered GitHub or manifest-based source candidates with confidence.
 - `usage_7d_30d.json`: parsed trigger evidence for 7-day and 30-day windows.
 - `update_actions.json`: safe update results and manual-review reasons.
 - `duplicates.json`: overlapping capability groups.
-- `manual_update_commands.md`: ready-to-run reinstall commands for non-Git skills with confirmed upstream.
+- `manual_update_commands.md`: registry update commands plus non-destructive Git clone review commands for source-known non-Git skills.
 - `source_manifest_draft.json`: auto-generated; all discovered sources ready for review and reuse.
 
 ## Source Discovery Priority

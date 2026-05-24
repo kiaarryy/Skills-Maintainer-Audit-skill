@@ -31,7 +31,7 @@ Use $skill-maintainer-audit to audit my local skills, show 7-day and 30-day usag
 
 ## 效果
 
-- 安全更新：只对干净 Git skill 执行 fast-forward；未知来源、脏目录、冲突目录只报告。
+- 安全更新：只对干净 Git skill 执行 fast-forward；复制安装的非 Git skill 只做来源识别、上游检测和旁路 review 克隆建议。
 - 使用统计：从本地 Codex sessions、session index、automation memory 中提取 7 天和 30 天触发证据。
 - 来源识别：从 `.git`、`manifest.json`、`package.json`、README / AGENTS / SKILL 中识别 GitHub 来源和置信度。
 - 分类整理：按研究、文档、前端设计、浏览器 QA、开发、自动化运维、agent 运维等类别整理全部 skill。
@@ -107,7 +107,7 @@ python scripts/run_audit.py --codex-home C:\Users\pc\.codex --output outputs\lat
 - `outputs/latest/usage_7d_30d.json`：7 天和 30 天使用统计。
 - `outputs/latest/update_actions.json`：更新状态和手动检查原因。
 - `outputs/latest/duplicates.json`：功能重复或近似重复分组。
-- `outputs/latest/manual_update_commands.md`：非 Git 安装 skill 的人工更新建议。
+- `outputs/latest/manual_update_commands.md`：registry 更新命令，以及非 Git 安装 skill 的非破坏性 review 克隆建议。
 
 ## 自动化
 
@@ -119,7 +119,7 @@ Use $skill-maintainer-audit from E:\VISUAL_code\Skill-Maintainer to run the loca
 
 ## 来源清单
 
-很多本地 skill 不是 Git clone 安装的，无法安全 `git pull`。可以参考 `references/source-manifest.example.json` 为它们补充来源 URL。第一版默认不自动覆盖这些 skill。
+很多本地 skill 不是 Git clone 安装的，无法安全 `git pull`。可以参考 `references/source-manifest.example.json` 为它们补充来源 URL。默认策略不会自动覆盖这些 skill；发现上游后只会生成 `git clone --depth 1 ... _review_<skill>` 命令，便于人工比对后再决定是否合并。
 
 ## 开发验证
 

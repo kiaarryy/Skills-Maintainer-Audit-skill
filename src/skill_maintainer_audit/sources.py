@@ -90,6 +90,7 @@ def github_search(skill_name: str, description: str = "", enable: bool = False) 
         fuzzy = not exact and _name_fuzzy_match(skill_name, repo_name)
 
         if exact and is_skill_related:
+            # Exact name match AND the repo is clearly AI/skill related
             candidate = SourceCandidate(
                 skill=skill_name,
                 url=normalize_github_url(item["clone_url"]),
@@ -98,15 +99,18 @@ def github_search(skill_name: str, description: str = "", enable: bool = False) 
                 detail=f"GitHub search exact name + skill-related: {item['full_name']}",
             )
             break
-        if exact and not candidate:
+        if exact and not is_skill_related and not candidate:
+            # Exact name match but no skill signal — mark as "unverified"
+            # Do NOT immediately accept; keep looking for skill-related match
             candidate = SourceCandidate(
                 skill=skill_name,
                 url=normalize_github_url(item["clone_url"]),
-                source_type="github_search_exact",
-                confidence="low",
-                detail=f"GitHub search exact name (unverified relevance): {item['full_name']}",
+                source_type="github_search_name_only",
+                confidence="unverified",
+                detail=f"Name match only, no AI/skill signal — verify before using: {item['full_name']}",
             )
         if fuzzy and is_skill_related and not candidate:
+            # Fuzzy match with skill signal
             candidate = SourceCandidate(
                 skill=skill_name,
                 url=normalize_github_url(item["clone_url"]),
@@ -119,6 +123,82 @@ def github_search(skill_name: str, description: str = "", enable: bool = False) 
     return candidate
 
 
+def github_search_family(prefix: str, skill_name: str, enable: bool = False) -> SourceCandidate | None:
+    """Search GitHub for a family/parent repo using a skill name prefix.
+
+    Used for skill families like cheat-bump, cheat-init → searches for 'cheat'.
+    """
+    if not enable and not os.environ.get("GITHUB_SEARCH"):
+        return None
+
+    cache_key = f"__family__{prefix}"
+    if cache_key in _github_search_cache:
+        cached = _github_search_cache[cache_key]
+        if cached is None:
+            return None
+        return SourceCandidate(
+            skill=skill_name,
+            url=cached.url,
+            source_type="github_search_family",
+            confidence="low",
+            detail=f"Parent/family repo search for prefix '{prefix}': {cached.detail}",
+        )
+
+    global _last_github_request_time
+    elapsed = time.time() - _last_github_request_time
+    if elapsed < 1.0:
+        time.sleep(1.0 - elapsed)
+
+    token = os.environ.get("GITHUB_TOKEN", "")
+    headers: dict[str, str] = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "skill-maintainer-audit/1.0",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    query = urllib.parse.quote(prefix)
+    url = f"{_GITHUB_API_BASE}/search/repositories?q={query}+in:name&per_page=5&sort=stars"
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        _last_github_request_time = time.time()
+    except (urllib.error.URLError, OSError, json.JSONDecodeError):
+        _last_github_request_time = time.time()
+        _github_search_cache[cache_key] = None
+        return None
+
+    items = data.get("items", [])
+    for item in items:
+        repo_name = item.get("name", "").lower()
+        repo_desc = (item.get("description") or "").lower()
+        repo_topics = [t.lower() for t in (item.get("topics") or [])]
+        if repo_name == prefix.lower() and _is_skill_related(repo_desc, repo_topics):
+            sentinel = SourceCandidate(prefix, normalize_github_url(item["clone_url"]),
+                                       "github_search_family", "low", item["full_name"])
+            _github_search_cache[cache_key] = sentinel
+            return SourceCandidate(
+                skill=skill_name,
+                url=sentinel.url,
+                source_type="github_search_family",
+                confidence="low",
+                detail=f"Family repo '{item['full_name']}' matched prefix '{prefix}'",
+            )
+
+    _github_search_cache[cache_key] = None
+    return None
+
+
+def _extract_prefix(skill_name: str) -> str | None:
+    """Extract the prefix from a hyphenated skill name, e.g. 'cheat-bump' -> 'cheat'."""
+    parts = skill_name.split("-")
+    if len(parts) >= 2:
+        return parts[0]
+    return None
+
+
 def _name_fuzzy_match(skill_name: str, repo_name: str) -> bool:
     clean_skill = re.sub(r"[-_]", "", skill_name.lower())
     clean_repo = re.sub(r"[-_]", "", repo_name.lower())
@@ -128,6 +208,7 @@ def _name_fuzzy_match(skill_name: str, repo_name: str) -> bool:
 _SKILL_RELATED_SIGNALS = (
     "claude", "anthropic", "codex", "openai", "skill", "agent", "llm", "ai agent",
     "prompt", "mcp", "tool use", "assistant", "copilot", "gpt", "claude-code",
+    "ai", "automation", "workflow",
 )
 
 
@@ -185,6 +266,17 @@ def discover_source(
     # Priority 6: GitHub API search (opt-in, network required)
     if enable_github_search:
         search_candidate = github_search(skill_name, description=description, enable=True)
+        # For unverified-only results, try family search before giving up
+        if search_candidate and search_candidate.confidence != "unverified":
+            return search_candidate
+
+        prefix = _extract_prefix(skill_name)
+        if prefix:
+            family_candidate = github_search_family(prefix, skill_name, enable=True)
+            if family_candidate:
+                return family_candidate
+
+        # Return the unverified exact match as last resort (user must verify)
         if search_candidate:
             return search_candidate
 

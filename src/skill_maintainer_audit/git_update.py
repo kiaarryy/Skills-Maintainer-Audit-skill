@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from .install_info import generate_reinstall_command
+from .install_info import generate_review_command
 from .models import SkillRecord, UpdateAction
 
 
@@ -65,8 +65,10 @@ def inspect_or_update(record: SkillRecord, policy: str) -> UpdateAction:
 def inspect_non_git(record: SkillRecord) -> UpdateAction:
     source = record.source_url
     skill_dir = Path(record.path)
+    # Prefer the skills.sh registry command when available
+    registry_cmd = record.registry_add_command
 
-    if not source:
+    if not source and not registry_cmd:
         return UpdateAction(
             record.name,
             record.path,
@@ -76,10 +78,25 @@ def inspect_non_git(record: SkillRecord) -> UpdateAction:
             source_confidence=record.source_confidence,
         )
 
-    reinstall_cmd = generate_reinstall_command(skill_dir, source)
+    # Skills found in skills.sh registry: use `npx skills add` as the preferred update path
+    if registry_cmd:
+        return UpdateAction(
+            record.name,
+            record.path,
+            "registry_updateable",
+            f"Found in skills.sh registry (source={record.registry_source}, installs={record.registry_installs:,})",
+            remote=record.registry_source,
+            source_type="skillssh_registry",
+            source_confidence="high",
+            registry_command=registry_cmd,
+            manual_command=registry_cmd,  # keep manual_command populated for backward compat
+        )
+
+    # Fallback: clone upstream into a sibling review folder; never overwrite copied skills.
+    review_cmd = generate_review_command(skill_dir, source) if source else None
 
     if not record.source_commit:
-        upstream = remote_head(source)
+        upstream = remote_head(source) if source else None
         if not upstream:
             return UpdateAction(
                 record.name,
@@ -89,9 +106,8 @@ def inspect_non_git(record: SkillRecord) -> UpdateAction:
                 remote=source,
                 source_type=record.source_type,
                 source_confidence=record.source_confidence,
-                manual_command=reinstall_cmd,
+                manual_command=review_cmd,
             )
-        # We got upstream HEAD even though we have no local baseline — report as updateable
         return UpdateAction(
             record.name,
             record.path,
@@ -101,10 +117,10 @@ def inspect_non_git(record: SkillRecord) -> UpdateAction:
             remote=source,
             source_type=record.source_type,
             source_confidence=record.source_confidence,
-            manual_command=reinstall_cmd,
+            manual_command=review_cmd,
         )
 
-    upstream = remote_head(source)
+    upstream = remote_head(source) if source else None
     if not upstream:
         return UpdateAction(
             record.name,
@@ -115,7 +131,7 @@ def inspect_non_git(record: SkillRecord) -> UpdateAction:
             remote=source,
             source_type=record.source_type,
             source_confidence=record.source_confidence,
-            manual_command=reinstall_cmd,
+            manual_command=review_cmd,
         )
 
     is_current = upstream.startswith(record.source_commit) or record.source_commit.startswith(upstream)
@@ -131,7 +147,7 @@ def inspect_non_git(record: SkillRecord) -> UpdateAction:
         remote=source,
         source_type=record.source_type,
         source_confidence=record.source_confidence,
-        manual_command=None if is_current else reinstall_cmd,
+        manual_command=None if is_current else review_cmd,
     )
 
 

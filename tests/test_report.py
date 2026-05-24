@@ -37,11 +37,13 @@ def test_report_contains_dashboard_sections_and_details(tmp_path: Path) -> None:
     duplicates = [DuplicateGroup("agent-ops", ["demo-skill", "demo-skill-2"], "similar names", 0.5)]
 
     render_report(report, records, usage, updates, duplicates, datetime(2026, 5, 24, tzinfo=timezone.utc))
-    html = report.read_text(encoding="utf-8")
-    assert "Update Funnel" in html
-    assert "30 Day Usage Heatmap" in html
-    assert "Category Distribution" in html
-    assert "Duplicate Capability Matrix" in html
-    assert "<details>" in html
-    assert "Show evidence" in html
+    html_text = report.read_text(encoding="utf-8")
 
+    # Action-first design sections
+    assert "Update via skills.sh Registry" in html_text
+    assert "Most Used" in html_text
+    assert "Skill Categories" in html_text
+    assert "Duplicate Capabilities" in html_text
+    # Evidence collapsible
+    assert "<details>" in html_text
+    assert "Show evidence" in html_text
