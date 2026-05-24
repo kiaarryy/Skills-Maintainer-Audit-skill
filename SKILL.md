@@ -17,24 +17,40 @@ Use this skill when the user asks to maintain, update, audit, classify, deduplic
 2. Run the audit CLI.
    - Read-only report:
      `python scripts/run_audit.py --codex-home <codex-home> --output outputs/latest --update-policy report-only`
-   - Safe maintenance:
-     `python scripts/run_audit.py --codex-home <codex-home> --skills-root <skills-root> --output outputs/latest --update-policy safe`
+   - Safe maintenance with Git fast-forward:
+     `python scripts/run_audit.py --codex-home <codex-home> --output outputs/latest --update-policy safe`
+   - Full discovery (network): add `--github-search` to search GitHub for skills without a known source URL.
+   - Persist discovered sources: add `--write-install-info` to write `.skill-install-info.json` into each skill folder so future runs skip the search step.
 
 3. Preserve safety boundaries.
    - Safe update only fast-forwards clean Git skill folders.
-   - Dirty Git folders, non-Git folders, missing remotes, conflicts, unknown source folders, and local-only skills are reported for manual review.
+   - Non-Git skills are never overwritten automatically. `manual_update_commands.md` contains copy-paste reinstall commands for each actionable non-Git skill.
    - Never delete skills, archives, logs, outputs, or generated reports.
 
-4. Inspect results.
-   - Open `outputs/latest/report.html` for the visual dashboard.
-   - Use JSON files for automation: `skills_inventory.json`, `usage_7d_30d.json`, `update_actions.json`, and `duplicates.json`.
+4. Understand update statuses.
+   | Status | Meaning | Action |
+   |---|---|---|
+   | `updated` | Git skill fast-forwarded | ✅ Done |
+   | `up_to_date` | Git skill already at latest | ✅ Done |
+   | `non_git_updateable` | Source URL confirmed + upstream HEAD fetched | Run command from `manual_update_commands.md` |
+   | `outdated_source_detected` | Vendored commit differs from upstream | Run command from `manual_update_commands.md` |
+   | `non_git_no_baseline` | Source URL found but upstream unreachable | Check network / URL validity |
+   | `unknown_source` | No source URL discovered | Run with `--github-search` or add to source manifest |
+   | `dirty_git` | Git skill has local changes | Review and commit or stash changes first |
 
-5. Act on findings.
+5. Inspect results.
+   - Open `outputs/latest/report.html` for the visual dashboard.
+   - Check the **Actionable Reinstall Commands** table for non-Git skills ready to update.
+   - Use JSON files for automation: `skills_inventory.json`, `usage_7d_30d.json`, `update_actions.json`, and `duplicates.json`.
+   - `source_manifest_draft.json` is auto-generated with all discovered sources; rename to `source_manifest.json` and pass with `--source-manifest` to make sources permanent.
+
+6. Act on findings.
    - For low-risk skill metadata issues, patch the relevant `SKILL.md` or `agents/openai.yaml`, then validate with the local skill validator.
-   - For unknown-source skills, add source metadata using `references/source-manifest.example.json` as the template before expecting updates.
+   - For `unknown_source` skills: run `--github-search --write-install-info` once to discover and persist sources. Review `source_manifest_draft.json` before committing.
+   - For `non_git_updateable` skills: copy the command from `manual_update_commands.md` and run it; then re-run with `--write-install-info` to record the new baseline.
    - For duplicate skills, keep the one that is used more often, better maintained, or project-specific; archive only after explicit user approval.
 
-6. Validate before completion.
+7. Validate before completion.
    - Run `PYTHONUTF8=1 python C:\Users\pc\.codex\skills\.system\skill-creator\scripts\quick_validate.py <skill-folder>` on the changed skill.
    - Run `python -m pytest -q` when changing this project.
    - Run a report-only smoke test after CLI changes.
@@ -43,13 +59,25 @@ Use this skill when the user asks to maintain, update, audit, classify, deduplic
 
 The CLI writes a complete, timestamped maintenance snapshot to the selected output directory:
 
-- `report.html`: visual dashboard for people.
+- `report.html`: visual dashboard — includes Actionable Reinstall Commands table.
 - `skills_inventory.json`: installed skills, metadata, categories, sources, and structural issues.
 - `source_candidates.json`: discovered GitHub or manifest-based source candidates with confidence.
 - `usage_7d_30d.json`: parsed trigger evidence for 7-day and 30-day windows.
 - `update_actions.json`: safe update results and manual-review reasons.
 - `duplicates.json`: overlapping capability groups.
-- `manual_update_commands.md`: advisory update notes for copied or vendored non-Git skills.
+- `manual_update_commands.md`: ready-to-run reinstall commands for non-Git skills with confirmed upstream.
+- `source_manifest_draft.json`: auto-generated; all discovered sources ready for review and reuse.
+
+## Source Discovery Priority
+
+The audit discovers source URLs in this priority order:
+1. `--source-manifest` file (user-provided, highest trust)
+2. `.skill-install-info.json` in the skill folder (persisted from a previous `--write-install-info` run)
+3. Local `.git/config` origin remote (git-backed skills)
+4. `manifest.json` `source_repositories` field
+5. `package.json` `repository` field
+6. GitHub URLs embedded in `README.md`, `AGENTS.md`, or `SKILL.md`
+7. GitHub API search (opt-in with `--github-search`)
 
 ## References
 

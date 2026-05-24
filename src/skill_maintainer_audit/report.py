@@ -17,24 +17,45 @@ def render_manual_update_commands(path: Path, updates: list[UpdateAction]) -> No
     lines = [
         "# Manual Skill Update Notes",
         "",
-        "These commands are intentionally advisory. The audit does not overwrite non-Git skill folders.",
+        "The audit does not overwrite non-Git skill folders automatically.",
+        "Commands below are ready to run after reviewing what will change.",
         "",
     ]
-    manual_items = [item for item in updates if item.manual_command]
-    if not manual_items:
-        lines.append("No manual update commands were generated.")
-    for item in manual_items:
-        lines.extend(
-            [
-                f"## {item.skill}",
+
+    actionable = [item for item in updates if item.manual_command and item.status in {"non_git_updateable", "outdated_source_detected"}]
+    advisory = [item for item in updates if item.manual_command and item.status not in {"non_git_updateable", "outdated_source_detected"}]
+
+    if actionable:
+        lines += ["## Actionable Reinstalls", "", "Source found and upstream HEAD confirmed — run to update:", ""]
+        for item in actionable:
+            lines += [
+                f"### {item.skill}",
                 "",
-                f"- Status: `{item.status}`",
-                f"- Source: {item.remote or 'unknown'}",
-                f"- Reason: {item.reason}",
-                f"- Suggested action: {item.manual_command}",
+                f"- Source: `{item.remote or 'unknown'}` ({item.source_type}, confidence={item.source_confidence})",
+                f"- Upstream HEAD: `{item.after or 'unknown'}`",
+                "```",
+                item.manual_command,
+                "```",
                 "",
             ]
-        )
+
+    if advisory:
+        lines += ["## Advisory (no upstream confirmation)", ""]
+        for item in advisory:
+            lines += [
+                f"### {item.skill}",
+                "",
+                f"- Status: `{item.status}`",
+                f"- Source: {item.remote or 'unknown'} ({item.source_type})",
+                f"- Reason: {item.reason}",
+                "```",
+                item.manual_command,
+                "```",
+                "",
+            ]
+
+    if not actionable and not advisory:
+        lines.append("No manual update commands were generated.")
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -128,6 +149,14 @@ def render_report(
 
     <section class="panel">
       <div class="panel-head">
+        <h2>Actionable Reinstall Commands</h2>
+        <span>Non-Git skills with confirmed upstream source</span>
+      </div>
+      {actionable_reinstalls(updates)}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
         <h2>Skill Inventory</h2>
         <input id="skillSearch" type="search" placeholder="Filter skills, categories, status, source">
       </div>
@@ -208,7 +237,7 @@ main { padding: 30px 56px 68px; }
 .track { height: 16px; background: var(--wash); border-radius: 999px; overflow: hidden; border: 1px solid #dce6e4; }
 .fill { height: 100%; background: var(--accent); }
 .status-updated, .status-up_to_date { color: var(--green); font-weight: 800; }
-.status-outdated_source_detected { color: var(--amber); font-weight: 800; }
+.status-outdated_source_detected, .status-non_git_updateable { color: var(--amber); font-weight: 800; }
 .status-unknown_source, .status-dirty_git, .status-non_git_no_baseline, .status-failed { color: var(--red); font-weight: 800; }
 .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .category-tile { background: var(--wash); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
@@ -274,7 +303,7 @@ def kpi(label: str, value: int, note: str) -> str:
 
 
 def funnel(counts: Counter[str]) -> str:
-    order = ["updated", "up_to_date", "outdated_source_detected", "non_git_no_baseline", "unknown_source", "dirty_git", "failed"]
+    order = ["updated", "up_to_date", "outdated_source_detected", "non_git_updateable", "non_git_no_baseline", "unknown_source", "dirty_git", "failed"]
     total = max(counts.values(), default=1)
     rows = []
     for status in order:
@@ -335,6 +364,34 @@ def evidence_block(item: UsageRecord) -> str:
         for e in item.evidence[:12]
     )
     return f'<div class="chip-list">{chips}</div><details><summary>Show evidence</summary><div class="detail-box">{details}</div></details>'
+
+
+def actionable_reinstalls(updates: list[UpdateAction]) -> str:
+    items = [u for u in updates if u.manual_command and u.status in {"non_git_updateable", "outdated_source_detected"}]
+    if not items:
+        advisory = [u for u in updates if u.manual_command]
+        if not advisory:
+            return "<p>No actionable reinstalls. All non-Git skills either have no discovered source or are already tracked. Run with <code>--github-search</code> to discover more sources.</p>"
+        return f"<p>No upstream-confirmed reinstalls yet. {len(advisory)} advisory items in <code>manual_update_commands.md</code>. Run with <code>--github-search</code> to confirm upstream sources.</p>"
+
+    rows = []
+    for item in items:
+        cmd = escape(item.manual_command or "")
+        rows.append(
+            "<tr>"
+            f"<td class=\"skill-name\">{escape(item.skill)}</td>"
+            f"<td class=\"status-{escape(item.status)}\">{escape(item.status)}</td>"
+            f"<td><span class=\"chip\">{escape(item.source_confidence or '?')}</span> {escape(item.source_type or '')}</td>"
+            f"<td class=\"mono\">{escape(item.remote or '')}</td>"
+            f"<td>{escape(item.after or '—')}</td>"
+            f"<td><details><summary>Show command</summary><div class=\"detail-box mono\">{cmd}</div></details></td>"
+            "</tr>"
+        )
+    return (
+        "<table><thead><tr>"
+        "<th>Skill</th><th>Status</th><th>Confidence</th><th>Source URL</th><th>Upstream HEAD</th><th>Reinstall</th>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    )
 
 
 def duplicate_matrix(groups: list[DuplicateGroup]) -> str:

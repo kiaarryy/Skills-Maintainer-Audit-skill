@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from typing import Any
+
 from .models import SkillRecord
 from .sources import discover_source, load_source_manifest
 
@@ -91,7 +93,11 @@ def summarize(description: str, body: str) -> str:
     return "No summary available."
 
 
-def audit_skill(skill_dir: Path, source_manifest: dict[str, dict[str, Any]] | None = None) -> SkillRecord:
+def audit_skill(
+    skill_dir: Path,
+    source_manifest: dict[str, dict[str, Any]] | None = None,
+    enable_github_search: bool = False,
+) -> SkillRecord:
     source_manifest = source_manifest or {}
     skill_file = skill_dir / "SKILL.md"
     issues: list[str] = []
@@ -139,7 +145,11 @@ def audit_skill(skill_dir: Path, source_manifest: dict[str, dict[str, Any]] | No
     category = categorize(name, description, body)
     tags = tag_skill(name, description, body, category)
     source = source_manifest.get(name) or source_manifest.get(skill_dir.name) or {}
-    source_candidate = discover_source(skill_dir, name, source_manifest)
+    source_candidate = discover_source(
+        skill_dir, name, source_manifest,
+        enable_github_search=enable_github_search,
+        description=description,
+    )
 
     return SkillRecord(
         name=name,
@@ -167,6 +177,14 @@ def audit_skill(skill_dir: Path, source_manifest: dict[str, dict[str, Any]] | No
     )
 
 
-def inventory_skills(skills_root: Path, include_system: bool = False, source_manifest_path: Path | None = None) -> list[SkillRecord]:
+def inventory_skills(
+    skills_root: Path,
+    include_system: bool = False,
+    source_manifest_path: Path | None = None,
+    enable_github_search: bool = False,
+) -> list[SkillRecord]:
     manifest = load_source_manifest(source_manifest_path)
-    return [audit_skill(path, manifest) for path in iter_skill_dirs(skills_root, include_system=include_system)]
+    return [
+        audit_skill(path, manifest, enable_github_search=enable_github_search)
+        for path in iter_skill_dirs(skills_root, include_system=include_system)
+    ]

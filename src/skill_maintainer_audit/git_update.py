@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from .install_info import generate_reinstall_command
 from .models import SkillRecord, UpdateAction
 
 
@@ -63,6 +64,8 @@ def inspect_or_update(record: SkillRecord, policy: str) -> UpdateAction:
 
 def inspect_non_git(record: SkillRecord) -> UpdateAction:
     source = record.source_url
+    skill_dir = Path(record.path)
+
     if not source:
         return UpdateAction(
             record.name,
@@ -73,17 +76,32 @@ def inspect_non_git(record: SkillRecord) -> UpdateAction:
             source_confidence=record.source_confidence,
         )
 
-    manual = f"Review upstream {source}; reinstall or update {record.name} manually after backing up local changes."
+    reinstall_cmd = generate_reinstall_command(skill_dir, source)
+
     if not record.source_commit:
+        upstream = remote_head(source)
+        if not upstream:
+            return UpdateAction(
+                record.name,
+                record.path,
+                "non_git_no_baseline",
+                "source URL found but upstream HEAD could not be fetched; manual check needed",
+                remote=source,
+                source_type=record.source_type,
+                source_confidence=record.source_confidence,
+                manual_command=reinstall_cmd,
+            )
+        # We got upstream HEAD even though we have no local baseline — report as updateable
         return UpdateAction(
             record.name,
             record.path,
-            "non_git_no_baseline",
-            "source URL discovered, but no installed commit baseline is available",
+            "non_git_updateable",
+            f"source URL confirmed; upstream HEAD={upstream[:12]}; no local baseline to compare",
+            after=upstream[:12],
             remote=source,
             source_type=record.source_type,
             source_confidence=record.source_confidence,
-            manual_command=manual,
+            manual_command=reinstall_cmd,
         )
 
     upstream = remote_head(source)
@@ -97,10 +115,12 @@ def inspect_non_git(record: SkillRecord) -> UpdateAction:
             remote=source,
             source_type=record.source_type,
             source_confidence=record.source_confidence,
-            manual_command=manual,
+            manual_command=reinstall_cmd,
         )
-    status = "up_to_date" if upstream.startswith(record.source_commit) or record.source_commit.startswith(upstream) else "outdated_source_detected"
-    reason = "vendored source commit matches upstream HEAD" if status == "up_to_date" else "vendored source commit differs from upstream HEAD"
+
+    is_current = upstream.startswith(record.source_commit) or record.source_commit.startswith(upstream)
+    status = "up_to_date" if is_current else "outdated_source_detected"
+    reason = "vendored source commit matches upstream HEAD" if is_current else "vendored source commit differs from upstream HEAD"
     return UpdateAction(
         record.name,
         record.path,
@@ -111,7 +131,7 @@ def inspect_non_git(record: SkillRecord) -> UpdateAction:
         remote=source,
         source_type=record.source_type,
         source_confidence=record.source_confidence,
-        manual_command=None if status == "up_to_date" else manual,
+        manual_command=None if is_current else reinstall_cmd,
     )
 
 
