@@ -22,7 +22,7 @@ _VALID_SOURCE_RE = re.compile(r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
 _REGISTRY_BASE = "https://skills.sh/api"
 _SEARCH_CACHE: dict[str, "RegistryMatch | None"] = {}
 _last_request_time: float = 0.0
-_MIN_REQUEST_GAP = 0.35  # seconds between requests (well under rate limit)
+_MIN_REQUEST_GAP = 0.40  # seconds between requests (well under rate limit)
 
 
 @dataclass
@@ -73,13 +73,19 @@ def search_registry(skill_name: str, enable: bool = False) -> RegistryMatch | No
 
     url = f"{_REGISTRY_BASE}/search?q={urllib.parse.quote(skill_name)}"
     headers = {"User-Agent": "skill-maintainer-audit/1.0", "Accept": "application/json"}
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        _last_request_time = time.time()
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError):
-        _last_request_time = time.time()
+    data = None
+    for attempt in range(2):  # one retry on transient failure
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            _last_request_time = time.time()
+            break
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError):
+            _last_request_time = time.time()
+            if attempt == 0:
+                time.sleep(1.0)  # back off before retry
+    if data is None:
         _SEARCH_CACHE[cache_key] = None
         return None
 
