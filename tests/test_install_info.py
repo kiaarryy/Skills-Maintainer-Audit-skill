@@ -4,6 +4,7 @@ from pathlib import Path
 
 from skill_maintainer_audit.install_info import (
     generate_reinstall_command,
+    generate_review_command,
     read_install_info,
     source_from_install_info,
     write_install_info,
@@ -54,14 +55,19 @@ def test_source_from_install_info_missing(tmp_path: Path) -> None:
     assert source_from_install_info("my-skill", tmp_path) is None
 
 
-def test_generate_reinstall_command_windows(tmp_path: Path) -> None:
-    import platform
+def test_generate_review_command_is_non_destructive(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "my-skill"
+    skill_dir.mkdir()
+    cmd = generate_review_command(skill_dir, "https://github.com/example/skill.git")
+    assert "git clone --depth 1" in cmd
+    assert "https://github.com/example/skill.git" in cmd
+    assert "_review_my-skill" in cmd
+    blocked_tokens = ("robocopy", "rsync", "rm -rf", "rd /s", "Remove-Item", "rmdir /s")
+    assert not any(token in cmd for token in blocked_tokens)
+
+
+def test_generate_reinstall_command_legacy_name_is_safe(tmp_path: Path) -> None:
     skill_dir = tmp_path / "my-skill"
     skill_dir.mkdir()
     cmd = generate_reinstall_command(skill_dir, "https://github.com/example/skill.git")
-    assert "git clone --depth 1" in cmd
-    assert "https://github.com/example/skill.git" in cmd
-    if platform.system() == "Windows":
-        assert "robocopy" in cmd
-    else:
-        assert "rsync" in cmd
+    assert cmd == generate_review_command(skill_dir, "https://github.com/example/skill.git")

@@ -41,7 +41,7 @@ class SkillRecord:
     registry_source: str | None = None   # e.g. "anthropics/skills"
     registry_skill_id: str | None = None  # canonical skill name in registry
     registry_installs: int = 0
-    registry_add_command: str | None = None  # ready-to-run npx skills add ...
+    registry_add_command: str | None = None  # npx skills add ... registry command
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

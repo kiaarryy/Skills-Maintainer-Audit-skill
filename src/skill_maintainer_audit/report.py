@@ -37,10 +37,11 @@ def _source_label(record: SkillRecord) -> str:
 def render_manual_update_commands(path: Path, updates: list[UpdateAction]) -> None:
     """Write a grouped, action-first update commands file."""
     lines = [
-        "# Skill Update Commands",
+        "# Skill Update Review Commands",
         "",
-        "> Copy-paste these commands to update your skills.",
-        "> All commands are safe — they install over existing files without deleting anything.",
+        "> Registry commands use the official skills.sh installer.",
+        "> Git fallback commands only clone upstream content into sibling `_review_*` folders for manual comparison.",
+        "> They do not overwrite, delete, or clean any installed skill directory.",
         "",
     ]
 
@@ -67,11 +68,11 @@ def render_manual_update_commands(path: Path, updates: list[UpdateAction]) -> No
                 lines.append(item.registry_command or "")
             lines += ["```", ""]
 
-    # Section 2: git clone fallback
+    # Section 2: git clone review fallback
     git_items = [u for u in updates if u.status in {"non_git_updateable", "outdated_source_detected"} and u.manual_command]
     if git_items:
-        lines += ["## Git Clone Fallback", "",
-                  "Skills with a discovered source but not on skills.sh:", ""]
+        lines += ["## Git Clone Review Fallback", "",
+                  "Skills with a discovered source but not on skills.sh. Clone them beside the installed skill, compare, then apply changes manually if appropriate:", ""]
         for item in git_items:
             conf_note = f" (confidence={item.source_confidence})" if item.source_confidence else ""
             lines += [
@@ -708,9 +709,9 @@ def non_registry_panel(items: list[UpdateAction]) -> str:
         )
     return (
         '<section class="panel">'
-        '<div class="panel-head"><h2>Git Clone Fallback Updates</h2>'
+        '<div class="panel-head"><h2>Git Clone Review Fallback</h2>'
         f'<span>{len(items)} skills with git source but not on registry</span></div>'
-        '<table><thead><tr><th>Skill</th><th>Source</th><th>Confidence</th><th>Command</th></tr></thead>'
+        '<table><thead><tr><th>Skill</th><th>Source</th><th>Confidence</th><th>Review Command</th></tr></thead>'
         '<tbody>' + "".join(rows) + '</tbody></table></section>'
     )
 

@@ -164,11 +164,11 @@ def _print_action_summary(records, usage, updates, duplicates, output) -> None:
     if registry_updateable:
         lines.append(f"  [{len(registry_updateable):3}] on skills.sh registry  → npx skills add  (see manual_update_commands.md)")
     if non_git_updateable:
-        lines.append(f"  [{len(non_git_updateable):3}] non-git updateable     → git clone reinstall (see manual_update_commands.md)")
+        lines.append(f"  [{len(non_git_updateable):3}] non-git source known   → git clone review (see manual_update_commands.md)")
     if unknown:
         lines.append(f"  [{len(unknown):3}] source unknown          → run with --registry-search to discover")
     if unused_30d:
-        lines.append(f"  [{len(unused_30d):3}] unused in 30 days       → candidates for removal")
+        lines.append(f"  [{len(unused_30d):3}] unused in 30 days       → review candidates")
     if duplicates:
         lines.append(f"  [{len(duplicates):3}] duplicate groups         → overlapping capabilities")
     lines += [

@@ -53,23 +53,12 @@ def source_from_install_info(skill_name: str, skill_dir: Path) -> tuple[str, str
     )
 
 
+def generate_review_command(skill_dir: Path, source_url: str) -> str:
+    """Generate a non-destructive command that stages upstream content for review."""
+    review_dir = skill_dir.resolve().parent / f"_review_{skill_dir.name}"
+    return f'git clone --depth 1 "{source_url}" "{review_dir}"'
+
+
 def generate_reinstall_command(skill_dir: Path, source_url: str) -> str:
-    """Generate a platform-aware reinstall command for a non-git skill."""
-    import platform
-
-    skill_path = str(skill_dir.resolve())
-    parent = str(skill_dir.resolve().parent)
-    tmp_name = f"_tmp_{skill_dir.name}"
-    tmp_path = str(skill_dir.resolve().parent / tmp_name)
-
-    if platform.system() == "Windows":
-        return (
-            f'git clone --depth 1 "{source_url}" "{tmp_path}" && '
-            f'robocopy "{tmp_path}" "{skill_path}" /E /XF .git /XD .git && '
-            f'rd /s /q "{tmp_path}"'
-        )
-    return (
-        f'git clone --depth 1 "{source_url}" "{tmp_path}" && '
-        f'rsync -av --exclude=".git" "{tmp_path}/" "{skill_path}/" && '
-        f'rm -rf "{tmp_path}"'
-    )
+    """Backward-compatible name for the safer review command."""
+    return generate_review_command(skill_dir, source_url)

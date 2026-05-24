@@ -31,7 +31,7 @@ Use $skill-maintainer-audit to audit my local skills, show 7-day and 30-day usag
 
 ## Features
 
-- Safe updates: only clean Git skill folders are eligible for fast-forward updates.
+- Safe updates: only clean Git skill folders are eligible for fast-forward updates; copied non-Git skills get source detection, upstream checks, and non-destructive review clone commands.
 - Usage analytics: extracts 7-day and 30-day trigger evidence from local Codex sessions, session index files, and automation memories.
 - Source discovery: detects GitHub sources from `.git`, `manifest.json`, `package.json`, README, AGENTS, and SKILL files.
 - Skill inventory: records metadata, file structure, categories, and structural issues.
@@ -82,7 +82,7 @@ python scripts/run_audit.py --codex-home C:\Users\pc\.codex --output outputs\lat
 - `outputs/latest/usage_7d_30d.json`: usage evidence for 7-day and 30-day windows.
 - `outputs/latest/update_actions.json`: update statuses and manual-review reasons.
 - `outputs/latest/duplicates.json`: similar or overlapping skill groups.
-- `outputs/latest/manual_update_commands.md`: advisory update notes for non-Git installed skills.
+- `outputs/latest/manual_update_commands.md`: registry update commands plus non-destructive review clone commands for non-Git installed skills.
 
 ## Automation
 
@@ -94,7 +94,7 @@ Use $skill-maintainer-audit from E:\VISUAL_code\Skill-Maintainer to run the loca
 
 ## Source Manifest
 
-Many installed skills are copied rather than Git-cloned. They cannot be safely updated with `git pull`. Use `references/source-manifest.example.json` to document source URLs for manual review or future reinstall workflows.
+Many installed skills are copied rather than Git-cloned. They cannot be safely updated with `git pull`. Use `references/source-manifest.example.json` to document source URLs. By default, source-known non-Git skills are not overwritten; the audit emits `git clone --depth 1 ... _review_<skill>` commands so you can compare upstream content before applying changes manually.
 
 ## Development Checks
 
