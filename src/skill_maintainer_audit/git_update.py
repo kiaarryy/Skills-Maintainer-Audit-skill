@@ -45,7 +45,7 @@ def inspect_or_update(record: SkillRecord, policy: str) -> UpdateAction:
     if policy != "safe":
         return UpdateAction(record.name, record.path, "skipped", f"unsupported update policy: {policy}", before=before, remote=remote)
 
-    fetch = run_git(path, ["fetch", "--ff-only", "origin"], timeout=120)
+    fetch = run_git(path, ["fetch", "origin"], timeout=120)
     if fetch.returncode != 0:
         return UpdateAction(record.name, record.path, "failed", clean_error(fetch), before=before, remote=remote)
 
@@ -69,4 +69,3 @@ def clean_error(result: subprocess.CompletedProcess[str]) -> str:
 
 def update_skills(records: list[SkillRecord], policy: str) -> list[UpdateAction]:
     return [inspect_or_update(record, policy) for record in records]
-
