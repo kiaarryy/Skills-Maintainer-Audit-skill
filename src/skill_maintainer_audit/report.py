@@ -376,7 +376,8 @@ main { padding: 24px 56px 72px; display: flex; flex-direction: column; gap: 18px
   border-radius: 999px; padding: 1px 8px;
 }
 .source-installs { font-size: 11px; color: var(--muted); margin-left: auto; }
-.update-source-body { padding: 12px 14px; background: var(--white); }
+/* White skill-tags area — zero bottom padding so cmd-box touches edge */
+.update-source-body { padding: 12px 14px 0; background: var(--white); }
 .skill-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
 .stag {
   background: var(--green-bg);
@@ -387,24 +388,40 @@ main { padding: 24px 56px 72px; display: flex; flex-direction: column; gap: 18px
 }
 
 /* ── Command / shell box ── */
-/* Dark forest green — intentionally harmonises with the green registry cards  */
+/*
+  Spans full card width (negative side margins cancel out parent padding).
+  Sits flush at the bottom of the card → becomes the card's "footer bar"
+  rather than a free-floating block, which removes the visual clash.
+  Color: medium-dark green (#1e3f2c) — clearly green, not near-black.
+*/
 .cmd-box {
-  background: var(--green-shell);
-  color: var(--green-shell-text);
-  border-radius: 8px;
-  padding: 10px 14px;
+  background: #1e3f2c;
+  color: #b8f0d0;
+  /* flush left/right with card edges */
+  margin: 0 -14px;
+  padding: 10px 18px;
   font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
   font-size: 12.5px;
   overflow-x: auto;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 10px;
   line-height: 1.5;
+  /* bottom corners match the parent card */
+  border-radius: 0 0 9px 9px;
+  border-top: 1px solid #2d5c3e;
 }
 .cmd-box::before {
   content: '$';
-  color: var(--green-shell-ps1);
+  color: #4ade80;
   font-weight: 700;
   flex-shrink: 0;
   user-select: none;
+  opacity: .8;
+}
+/* cmd-box used in non-registry panels (details/summary) keeps its own radius */
+.panel table .cmd-box {
+  margin: 8px 0 0;
+  border-radius: 8px;
+  border: none;
 }
 
 /* ── Usage table ── */
