@@ -239,6 +239,9 @@ main { padding: 30px 56px 68px; }
 .status-updated, .status-up_to_date { color: var(--green); font-weight: 800; }
 .status-outdated_source_detected, .status-non_git_updateable { color: var(--amber); font-weight: 800; }
 .status-unknown_source, .status-dirty_git, .status-non_git_no_baseline, .status-failed { color: var(--red); font-weight: 800; }
+.conf-medium { color: var(--green); font-weight: 700; }
+.conf-low { color: var(--amber); font-weight: 700; }
+.conf-unverified { color: var(--red); font-weight: 700; text-decoration: underline dotted; cursor: help; }
 .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .category-tile { background: var(--wash); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .category-tile strong { display: block; font-size: 26px; }
@@ -428,7 +431,7 @@ def inventory_table(records: list[SkillRecord], usage_by_skill: dict[str, UsageR
             f'<td>{escape(record.category)}<div class="chip-list">{tags(record.tags)}</div></td>'
             f'<td>{usage.count_7d if usage else 0} / {usage.count_30d if usage else 0}</td>'
             f'<td class="status-{escape(status)}">{escape(status)}</td>'
-            f'<td><span class="chip">{escape(record.source_confidence or "no-source")}</span><details><summary>Source</summary><div class="detail-box mono">{escape(source)}</div></details></td>'
+            f'<td><span class="chip conf-{escape(record.source_confidence or "none")}" title="{escape(record.source_type or "")}">{escape(record.source_confidence or "no-source")}</span><details><summary>Source</summary><div class="detail-box mono">{escape(source)}</div></details></td>'
             f'<td>{escape("; ".join(record.issues[:3]) or "OK")}</td></tr>'
         )
     return "<table><thead><tr><th>Skill</th><th>Category</th><th>7d / 30d</th><th>Status</th><th>Source</th><th>Issues</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"

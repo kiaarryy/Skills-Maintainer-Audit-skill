@@ -151,6 +151,10 @@ def _write_install_info_files(records) -> None:
     for record in records:
         if not record.source_url:
             continue
+        # Never write install info into git-backed skills — they already have
+        # a .git directory that tracks provenance. Writing here would dirty the tree.
+        if record.is_git:
+            continue
         skill_dir = Path(record.path)
         try:
             write_install_info(
