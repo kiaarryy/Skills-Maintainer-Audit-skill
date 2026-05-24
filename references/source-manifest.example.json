@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "name": "example-skill",
+      "path": "C:/Users/pc/.codex/skills/example-skill",
+      "source_url": "https://github.com/example/example-skill.git",
+      "install_method": "git-clone",
+      "notes": "Only skills with a clean Git worktree are eligible for safe auto-update."
+    }
+  ]
+}
+

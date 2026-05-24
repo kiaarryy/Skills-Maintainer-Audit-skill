@@ -1,0 +1,5 @@
+interface:
+  display_name: "Skill Maintainer Audit"
+  short_description: "Audit, update, classify, and visualize local AI agent skills."
+  default_prompt: "Use $skill-maintainer-audit to audit local skills, safely update Git-backed skills, summarize 7-day and 30-day usage, classify duplicate capabilities, and generate a visual dashboard."
+
